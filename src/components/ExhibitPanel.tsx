@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import type { Exhibit } from '../data/exhibits';
 import { wings } from '../data/exhibits';
 
@@ -10,7 +10,7 @@ interface ExhibitPanelProps {
 
 function getAccentColor(exhibitId: string): string {
   for (const wing of wings) {
-    if (wing.exhibits.some(e => e.id === exhibitId)) {
+    if (wing.exhibits.some((e) => e.id === exhibitId)) {
       return wing.accentColor;
     }
   }
@@ -18,16 +18,19 @@ function getAccentColor(exhibitId: string): string {
 }
 
 export default function ExhibitPanel({ exhibit, isOpen, onClose }: ExhibitPanelProps) {
+  const [activeImage, setActiveImage] = useState(0);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     },
-    [onClose]
+    [onClose],
   );
 
   useEffect(() => {
     if (isOpen) {
       document.addEventListener('keydown', handleKeyDown);
+      setActiveImage(0);
     }
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, handleKeyDown]);
@@ -35,52 +38,85 @@ export default function ExhibitPanel({ exhibit, isOpen, onClose }: ExhibitPanelP
   if (!isOpen || !exhibit) return null;
 
   const accentColor = getAccentColor(exhibit.id);
-  const { title, subtitle, description, stats, links, tags, highlight } = exhibit;
+  const { title, subtitle, description, stats, links, tags, highlight, images } = exhibit;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
 
       {/* Panel card */}
       <div
-        className="relative z-10 max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto exhibit-scroll rounded-2xl bg-gray-900/95 border border-gray-700 shadow-2xl"
+        className="relative z-10 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto rounded-2xl bg-[#0a0a1e]/95 border border-white/10 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          borderColor: `${accentColor}33`,
-          animation: 'countUp 0.3s ease-out forwards',
-        }}
+        style={{ borderColor: `${accentColor}33` }}
       >
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors z-20"
-          aria-label="Close panel"
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white transition-colors z-20"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
 
-        <div className="p-8">
-          {/* Title */}
-          <h2 className="text-2xl font-bold text-white pr-8">{title}</h2>
+        {/* Image carousel */}
+        {images && images.length > 0 && (
+          <div className="relative">
+            <img
+              src={images[activeImage]}
+              alt={title}
+              className="w-full h-auto max-h-[50vh] object-contain bg-black/50 rounded-t-2xl"
+            />
+            {images.length > 1 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveImage(i)}
+                    className="w-2.5 h-2.5 rounded-full transition-all"
+                    style={{
+                      backgroundColor: i === activeImage ? accentColor : 'rgba(255,255,255,0.3)',
+                      boxShadow: i === activeImage ? `0 0 8px ${accentColor}` : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            {images.length > 1 && (
+              <>
+                <button
+                  onClick={() => setActiveImage((p) => (p > 0 ? p - 1 : images.length - 1))}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setActiveImage((p) => (p < images.length - 1 ? p + 1 : 0))}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
-          {/* Subtitle */}
+        <div className="p-8">
+          <h2 className="text-2xl font-bold text-white pr-8">{title}</h2>
           {subtitle && (
             <p className="mt-1 text-sm" style={{ color: accentColor }}>
               {subtitle}
             </p>
           )}
-
-          {/* Description */}
           <p className="mt-4 text-gray-300 leading-relaxed">{description}</p>
 
-          {/* Highlight callout */}
           {highlight && (
             <div
               className="mt-5 p-4 rounded-lg border-l-4"
@@ -93,13 +129,12 @@ export default function ExhibitPanel({ exhibit, isOpen, onClose }: ExhibitPanelP
             </div>
           )}
 
-          {/* Stats grid */}
           {stats && stats.length > 0 && (
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
               {stats.map((stat) => (
                 <div
                   key={stat.label}
-                  className="rounded-xl bg-gray-800/60 border border-gray-700/50 p-4 text-center"
+                  className="rounded-xl bg-white/5 border border-white/10 p-4 text-center"
                 >
                   <div className="text-xs text-gray-400 mb-1">{stat.label}</div>
                   <div className="text-lg font-bold text-white">
@@ -112,7 +147,6 @@ export default function ExhibitPanel({ exhibit, isOpen, onClose }: ExhibitPanelP
             </div>
           )}
 
-          {/* Tags */}
           {tags && tags.length > 0 && (
             <div className="mt-5 flex flex-wrap gap-2">
               {tags.map((tag) => (
@@ -131,7 +165,6 @@ export default function ExhibitPanel({ exhibit, isOpen, onClose }: ExhibitPanelP
             </div>
           )}
 
-          {/* Links as buttons */}
           {links && links.length > 0 && (
             <div className="mt-6 flex flex-wrap gap-3">
               {links.map((link) => (
@@ -144,7 +177,7 @@ export default function ExhibitPanel({ exhibit, isOpen, onClose }: ExhibitPanelP
                   style={{ backgroundColor: accentColor }}
                 >
                   {link.label}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
                     <polyline points="15 3 21 3 21 9" />
                     <line x1="10" y1="14" x2="21" y2="3" />
